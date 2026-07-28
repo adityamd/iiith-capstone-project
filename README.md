@@ -11,7 +11,8 @@ The following analyses examine student withdrawal rates across different combina
 Examples:
 Notebook:
 https://github.com/adityamd/iiith-capstone-project/blob/master/Kiran/Student_Dropout_EDA_v1.ipynb
-- Result: `metric = value`
+- Result:
+- 
 Gender × Region — Withdrawal Analysis
 Plot:
 <img width="1061" height="490" alt="image" src="https://github.com/user-attachments/assets/3bcfbcf6-89f9-4e20-9f6e-b99e1a6a7f52" />
