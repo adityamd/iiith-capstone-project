@@ -8,11 +8,11 @@
 Add the result here. Evidence can be a short explanation, metric, output, code or notebook link, table, or plot.
 
 The following analyses examine student withdrawal rates across different combinations of demographic, socioeconomic, academic, and behavioural variables. The objective is to identify high-risk student groups and understand how interactions between multiple factors influence the likelihood of student withdrawal.
-Examples:
+
 Notebook:
 https://github.com/adityamd/iiith-capstone-project/blob/master/Kiran/Student_Dropout_EDA_v1.ipynb
 - Result:
-- 
+
 Gender × Region — Withdrawal Analysis
 Plot:
 <img width="1061" height="490" alt="image" src="https://github.com/user-attachments/assets/3bcfbcf6-89f9-4e20-9f6e-b99e1a6a7f52" />
