@@ -1,6 +1,49 @@
 # OULAD Student Dropout Risk Prediction
 
 ## Issue Resolution Log
+
+### [Issue #6 - Loss Function Selection](https://github.com/adityamd/iiith-capstone-project/issues/6)
+
+**Decision**
+
+Use **binary cross-entropy (log loss) with balanced sample weights** for the preferred HistGradientBoosting model. The target is binary (`Withdrawn = 1`; all other outcomes = `0`), and the dataset is moderately imbalanced (`31.16%` withdrawn versus `68.84%` not withdrawn). Weighting gives the minority withdrawal class appropriate importance without changing the held-out test distribution.
+
+This choice also reflects the operational cost of a false negative: failing to identify a student who later withdraws means losing an opportunity for early support. Accuracy alone is therefore insufficient. Model evaluation should prioritize ROC-AUC and PR-AUC and report withdrawal precision, recall, F1, and the confusion matrix. The intervention threshold should be selected from validation data using the recall/precision trade-off and available advisor capacity rather than permanently defaulting to `0.5`.
+
+Focal loss is not recommended at this stage because withdrawal is moderately, rather than extremely, rare, and weighted log loss has already produced strong baseline results. Class weighting and the Random Oversampling, SMOTE, and ADASYN experiments from [Issue #4](https://github.com/adityamd/iiith-capstone-project/issues/4) should be compared as alternative imbalance treatments; they should not be combined automatically.
+
+Evidence: [Checkpoint 1 EDA and model comparison notebook](https://github.com/adityamd/iiith-capstone-project/blob/master/dev_playground_shujath/checkpoint1_EDA_v1.ipynb)
+
+---
+
+### [Issue #5 - Model Selection](https://github.com/adityamd/iiith-capstone-project/issues/5)
+
+**Decision**
+
+Carry forward **weighted HistGradientBoosting as the preferred current candidate**, while retaining balanced Logistic Regression as the interpretable benchmark. This is a provisional selection until the augmentation experiments from [Issue #4](https://github.com/adityamd/iiith-capstone-project/issues/4), hyperparameter tuning, intervention-threshold selection, and subgroup evaluation are complete.
+
+| Model | ROC-AUC | PR-AUC | Withdrawal precision | Withdrawal recall | Withdrawal F1 |
+|---|---:|---:|---:|---:|---:|
+| HistGradientBoosting (weighted) | **0.881** | **0.820** | 0.721 | **0.753** | **0.737** |
+| Random Forest (balanced) | 0.878 | 0.807 | **0.804** | 0.642 | 0.714 |
+| Logistic Regression (balanced) | 0.871 | 0.786 | 0.708 | 0.737 | 0.722 |
+
+These results were produced using a stratified 75%/25% train-test split, balanced class/sample weighting, and a threshold of `0.5` for precision, recall, and F1. HistGradientBoosting provided the strongest overall ranking performance and identified more withdrawn students than Random Forest, while achieving the highest F1 score.
+
+**HistGradientBoosting primer**
+
+HistGradientBoosting is a tree-based boosting algorithm. It groups continuous values into histogram bins to make split searches efficient, then builds small decision trees sequentially. Each new tree focuses on correcting errors made by the existing ensemble. This allows the model to learn nonlinear effects and interactions, such as low engagement combined with high workload or limited prior education.
+
+- **Logistic Regression** learns one linear probability relationship. It is fast and interpretable but requires nonlinearities and interactions to be specified explicitly.
+- **Random Forest** trains many independent trees on different samples and features, then averages their predictions. It is robust and captured nonlinear effects, but in this experiment it had the lowest withdrawal recall.
+- **HistGradientBoosting** trains trees sequentially so that later trees correct earlier errors. It produced the best ROC-AUC, PR-AUC, withdrawal recall, and F1 in the completed baseline comparison.
+
+The subgroup disparities identified in [Issue #2](https://github.com/adityamd/iiith-capstone-project/issues/2) mean that final confirmation must include performance checks across sufficiently sized education, workload, deprivation, disability, gender, and other relevant groups.
+
+Evidence: [Checkpoint 1 EDA and model comparison notebook](https://github.com/adityamd/iiith-capstone-project/blob/master/dev_playground_shujath/checkpoint1_EDA_v1.ipynb)
+
+---
+
 ### [Issue #2 - Correlation data for outcomes across multiple variables](https://github.com/adityamd/iiith-capstone-project/issues/2)
 
 **Evidence**
