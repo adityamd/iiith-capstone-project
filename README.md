@@ -10,7 +10,7 @@ Use **binary cross-entropy (log loss) with balanced sample weights** for the pre
 
 This choice also reflects the operational cost of a false negative: failing to identify a student who later withdraws means losing an opportunity for early support. Accuracy alone is therefore insufficient. Model evaluation should prioritize ROC-AUC and PR-AUC and report withdrawal precision, recall, F1, and the confusion matrix. The intervention threshold should be selected from validation data using the recall/precision trade-off and available advisor capacity rather than permanently defaulting to `0.5`.
 
-Focal loss is not recommended at this stage because withdrawal is moderately, rather than extremely, rare, and weighted log loss has already produced strong baseline results. Class weighting and the Random Oversampling, SMOTE, and ADASYN experiments from [Issue #4](https://github.com/adityamd/iiith-capstone-project/issues/4) should be compared as alternative imbalance treatments; they should not be combined automatically.
+Class weighting and the Random Oversampling, SMOTE, and ADASYN experiments from [Issue #4](https://github.com/adityamd/iiith-capstone-project/issues/4) should be compared as alternative imbalance treatments on the unchanged test set; they should not be combined automatically.
 
 Evidence: [Checkpoint 1 EDA and model comparison notebook](https://github.com/adityamd/iiith-capstone-project/blob/master/dev_playground_shujath/checkpoint1_EDA_v1.ipynb)
 
