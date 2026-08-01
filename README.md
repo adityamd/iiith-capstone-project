@@ -14,6 +14,8 @@ ADASYN (Adaptive Synthetic Sampling)
 
 Random Oversampling increases the number of minority-class samples by duplicating existing observations. SMOTE generates synthetic minority samples using information from neighbouring observations, while ADASYN creates synthetic samples by focusing more on minority instances that are harder to learn. These techniques were used to improve the representation of withdrawn students in the training data and investigate their impact on the learning process.
 
+https://github.com/adityamd/iiith-capstone-project/blob/master/Kiran/05_Data_Augmentation.ipynb
+
 ### [Issue #6 - Loss Function Selection](https://github.com/adityamd/iiith-capstone-project/issues/6)
 
 **Decision**
