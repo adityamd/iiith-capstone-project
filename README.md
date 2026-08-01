@@ -2,6 +2,20 @@
 
 ## Issue Resolution Log
 
+
+### [Issue #2 - Data Augmentation] (https://github.com/adityamd/iiith-capstone-project/issues/4)
+The training dataset contains fewer withdrawn students than non-withdrawn students, which may affect the model's ability to learn patterns associated with student withdrawal. To improve the representation of the minority class, we applied different data augmentation techniques to the training dataset while keeping the test dataset unchanged to maintain a realistic evaluation setting.
+
+Three data augmentation techniques were applied:
+
+Random Oversampling
+SMOTE (Synthetic Minority Over-sampling Technique)
+ADASYN (Adaptive Synthetic Sampling)
+
+Random Oversampling increases the number of minority-class samples by duplicating existing observations. SMOTE generates synthetic minority samples using information from neighbouring observations, while ADASYN creates synthetic samples by focusing more on minority instances that are harder to learn. These techniques were used to improve the representation of withdrawn students in the training data and investigate their impact on the learning process.
+
+https://github.com/adityamd/iiith-capstone-project/blob/master/Kiran/05_Data_Augmentation.ipynb
+
 ### [Issue #6 - Loss Function Selection](https://github.com/adityamd/iiith-capstone-project/issues/6)
 
 **Decision**
