@@ -1,5 +1,55 @@
 # OULAD Student Dropout Risk Prediction
 
+## Three-Model Inference Dashboard
+
+The project includes a local Streamlit dashboard that compares inference from:
+
+- balanced Logistic Regression;
+- weighted Histogram Gradient Boosting; and
+- the three-seed PyTorch tabular neural network evaluated in
+  `dev_playground_shujath/checkpoint1_EDA_v3.ipynb`.
+
+All three models receive the same 54 leakage-safe features available at the 25% course checkpoint.
+The dashboard provides individual model inference buttons, curated disagreement cases, editable
+what-if inputs, test-set performance and calibration charts, prediction-agreement analysis, and
+gender/disability subgroup checks.
+
+### Quick start on Windows
+
+The dashboard is configured for the existing `MLDL` Conda environment. From the repository root:
+
+```powershell
+.\dashboard\run_dashboard.ps1
+```
+
+Open the local URL printed by Streamlit, normally <http://localhost:8501>.
+
+If dependencies have not been installed in MLDL:
+
+```powershell
+conda activate MLDL
+python -m pip install -r dashboard\requirements.txt
+python -m streamlit run dashboard\app.py
+```
+
+Run the automated checks with:
+
+```powershell
+conda activate MLDL
+python -m unittest discover dashboard\tests -v
+```
+
+The app loads saved artifacts and does not retrain models during inference. To regenerate the
+common benchmark after changing features or model configuration:
+
+```powershell
+conda activate MLDL
+python -m dashboard.train_dashboard_models
+```
+
+See [dashboard/README.md](dashboard/README.md) for dataset placement, artifact provenance,
+manual validation steps, troubleshooting, and complete execution instructions.
+
 ## Issue Resolution Log
 
 
