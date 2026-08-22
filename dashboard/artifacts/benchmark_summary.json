@@ -1,0 +1,57 @@
+{
+  "artifact_version": "1.0.0",
+  "dataset_fingerprint": "e32a8f7c7ff8d1df",
+  "rows": 32593,
+  "features": 54,
+  "encoded_features": 93,
+  "metrics": {
+    "logistic_regression": {
+      "model": "Logistic Regression",
+      "accuracy": 0.8159722222222222,
+      "balanced_accuracy": 0.7882901718696584,
+      "precision": 0.685640362225097,
+      "recall": 0.7186440677966102,
+      "f1": 0.7017543859649122,
+      "roc_auc": 0.8631039590961113,
+      "pr_auc": 0.7762345346853053,
+      "brier_score": 0.13855611749780444,
+      "log_loss": 0.44401587128420456,
+      "tn": 2935,
+      "fp": 486,
+      "fn": 415,
+      "tp": 1060
+    },
+    "histogram_boosting": {
+      "model": "Histogram Boosting",
+      "accuracy": 0.8157679738562091,
+      "balanced_accuracy": 0.8041486531344288,
+      "precision": 0.6672504378283712,
+      "recall": 0.7749152542372881,
+      "f1": 0.7170639899623589,
+      "roc_auc": 0.8742469988456145,
+      "pr_auc": 0.797355068795393,
+      "brier_score": 0.1403597623002085,
+      "log_loss": 0.44669775417806257,
+      "tn": 2851,
+      "fp": 570,
+      "fn": 332,
+      "tp": 1143
+    },
+    "neural_network": {
+      "model": "Neural Network",
+      "accuracy": 0.8251633986928104,
+      "balanced_accuracy": 0.7994950430788896,
+      "precision": 0.6998063266623629,
+      "recall": 0.7349152542372881,
+      "f1": 0.716931216931217,
+      "roc_auc": 0.8765792537616615,
+      "pr_auc": 0.8000725645792792,
+      "brier_score": 0.12991671143031847,
+      "log_loss": 0.41862626665132024,
+      "tn": 2956,
+      "fp": 465,
+      "fn": 391,
+      "tp": 1084
+    }
+  }
+}
