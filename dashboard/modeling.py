@@ -48,6 +48,13 @@ MODEL_COLORS = {
     "histogram_boosting": "#E07A5F",
     "neural_network": "#6A994E",
 }
+PRIMARY_FAIRNESS_ATTRIBUTES = [
+    "gender",
+    "disability",
+    "imd_band",
+    "gender_x_disability",
+    "disability_x_deprivation",
+]
 THRESHOLD = 0.5
 FEATURE_GROUPS = {
     "Early VLE engagement": [
@@ -472,24 +479,92 @@ def input_ranges(development: pd.DataFrame, features: list[str]) -> dict[str, di
     return ranges
 
 
+def fairness_audit_groups(frame: pd.DataFrame) -> pd.DataFrame:
+    """Build the primary audit groups used by the dedicated DPD/EOD notebook."""
+    audit = pd.DataFrame(index=frame.index)
+    audit["gender"] = frame["gender"].fillna("Unknown").astype(str)
+    audit["disability"] = frame["disability"].fillna("Unknown").astype(str)
+    audit["imd_band"] = frame["imd_band"].fillna("Unknown").astype(str)
+    deprived_bands = {"0-10%", "10-20", "10-20%", "20-30%"}
+    audit["deprivation_group"] = np.where(
+        audit["imd_band"].eq("Unknown"),
+        "Unknown IMD",
+        np.where(audit["imd_band"].isin(deprived_bands), "Lowest 30% IMD", "Other known IMD"),
+    )
+    audit["gender_x_disability"] = (
+        audit["gender"] + " | disability=" + audit["disability"]
+    )
+    audit["disability_x_deprivation"] = (
+        audit["disability"] + " | " + audit["deprivation_group"]
+    )
+    return audit.reset_index(drop=True)
+
+
 def subgroup_records(test: pd.DataFrame, probabilities: dict[str, np.ndarray]) -> pd.DataFrame:
     rows = []
     actual = test["target_dropout"].to_numpy()
+    audit = fairness_audit_groups(test)
     for model_id, probability in probabilities.items():
         prediction = (probability >= THRESHOLD).astype(int)
-        for attribute in ["gender", "disability"]:
-            for group in sorted(test[attribute].fillna("Unknown").astype(str).unique()):
-                mask = test[attribute].fillna("Unknown").astype(str).to_numpy() == group
+        for attribute in PRIMARY_FAIRNESS_ATTRIBUTES:
+            attribute_values = audit[attribute].to_numpy()
+            for group in sorted(audit[attribute].unique()):
+                mask = attribute_values == group
                 y_group, pred_group = actual[mask], prediction[mask]
                 tn, fp, fn, tp = confusion_matrix(y_group, pred_group, labels=[0, 1]).ravel()
+                positives, negatives, flagged = tp + fn, tn + fp, tp + fp
+                eligible = positives >= 30 and negatives >= 30
+                if attribute == "imd_band" and group == "Unknown":
+                    eligible = False
+                if attribute == "disability_x_deprivation" and "Unknown IMD" in group:
+                    eligible = False
                 rows.append({
                     "model_id": model_id, "model": MODEL_LABELS[model_id],
-                    "attribute": attribute, "group": group, "records": int(mask.sum()),
-                    "recall": tp / (tp + fn) if tp + fn else np.nan,
-                    "fpr": fp / (fp + tn) if fp + tn else np.nan,
-                    "precision": tp / (tp + fp) if tp + fp else np.nan,
-                    "alert_rate": (tp + fp) / mask.sum(),
+                    "attribute": attribute, "group": group,
+                    "records": int(mask.sum()),
+                    "actual_withdrawn": int(positives),
+                    "actual_not_withdrawn": int(negatives),
+                    "withdrawal_rate": positives / mask.sum(),
+                    "selection_rate": flagged / mask.sum(),
+                    "tpr_recall": tp / positives if positives else np.nan,
+                    "fnr": fn / positives if positives else np.nan,
+                    "fpr": fp / negatives if negatives else np.nan,
+                    "precision": tp / flagged if flagged else np.nan,
+                    "accuracy": (tp + tn) / mask.sum(),
+                    "eligible": bool(eligible),
                 })
+    return pd.DataFrame(rows)
+
+
+def fairness_summary(subgroup_metrics: pd.DataFrame) -> pd.DataFrame:
+    """Calculate notebook-equivalent DPD and equal-opportunity differences."""
+    rows = []
+    for (model_id, model, attribute), groups in subgroup_metrics.groupby(
+        ["model_id", "model", "attribute"], sort=False,
+    ):
+        eligible = groups[groups["eligible"].astype(bool)]
+        selection = eligible["selection_rate"].dropna()
+        recall = eligible["tpr_recall"].dropna()
+        rows.append({
+            "model_id": model_id,
+            "model": model,
+            "attribute": attribute,
+            "eligible_groups": int(len(eligible)),
+            "dpd": float(selection.max() - selection.min()) if len(selection) >= 2 else np.nan,
+            "eod": float(recall.max() - recall.min()) if len(recall) >= 2 else np.nan,
+            "lowest_selection_group": (
+                eligible.loc[selection.idxmin(), "group"] if len(selection) else None
+            ),
+            "highest_selection_group": (
+                eligible.loc[selection.idxmax(), "group"] if len(selection) else None
+            ),
+            "lowest_recall_group": (
+                eligible.loc[recall.idxmin(), "group"] if len(recall) else None
+            ),
+            "highest_recall_group": (
+                eligible.loc[recall.idxmax(), "group"] if len(recall) else None
+            ),
+        })
     return pd.DataFrame(rows)
 
 
@@ -572,7 +647,7 @@ def benchmark_and_export(data_dir: Path, artifact_dir: Path) -> dict[str, Any]:
             "withdrawal_prevalence": float(part["target_dropout"].mean()),
         })
     bundle = {
-        "artifact_version": "1.0.0",
+        "artifact_version": "1.1.0",
         "created_utc": pd.Timestamp.utcnow().isoformat(),
         "dataset_fingerprint": dataset_fingerprint(data_dir),
         "feature_columns": features,
