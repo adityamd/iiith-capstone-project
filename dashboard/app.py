@@ -10,7 +10,13 @@ import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
-from dashboard.modeling import MODEL_COLORS, MODEL_LABELS, RuntimeModels
+from dashboard.modeling import (
+    MODEL_COLORS,
+    MODEL_LABELS,
+    PRIMARY_FAIRNESS_ATTRIBUTES,
+    RuntimeModels,
+    fairness_summary,
+)
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -313,22 +319,104 @@ with tab_performance:
     )
     display_metrics = metrics[[
         "model", "pr_auc", "roc_auc", "balanced_accuracy", "precision", "recall",
-        "f1", "brier_score", "fp", "fn",
+        "f1", "fp", "fn",
     ]].rename(columns={
         "model": "Model", "pr_auc": "PR-AUC", "roc_auc": "ROC-AUC",
         "balanced_accuracy": "Balanced accuracy", "precision": "Precision",
-        "recall": "Recall", "f1": "F1", "brier_score": "Brier score",
+        "recall": "Recall", "f1": "F1",
         "fp": "False positives", "fn": "False negatives",
     })
     st.dataframe(
         display_metrics.style.format({
             "PR-AUC": "{:.3f}", "ROC-AUC": "{:.3f}", "Balanced accuracy": "{:.3f}",
             "Precision": "{:.3f}", "Recall": "{:.3f}", "F1": "{:.3f}",
-            "Brier score": "{:.3f}",
         }).highlight_max(subset=["PR-AUC", "ROC-AUC", "Balanced accuracy", "Precision", "Recall", "F1"], color="#DDEED6")
-        .highlight_min(subset=["Brier score", "False positives", "False negatives"], color="#DDEED6"),
+        .highlight_min(subset=["False positives", "False negatives"], color="#DDEED6"),
         width="stretch", hide_index=True,
     )
+    st.markdown("### Fairness summary")
+    st.markdown(
+        "<div class='callout'><strong>How to read these fairness gaps:</strong> "
+        "DPD compares how often eligible groups are flagged. EOD compares how often actual "
+        "withdrawals are detected. A value of 0 means no measured gap; larger values mean "
+        "larger differences. Groups need at least 30 withdrawals and 30 non-withdrawals to "
+        "define either gap.</div>",
+        unsafe_allow_html=True,
+    )
+    fairness = fairness_summary(bundle["subgroup_metrics"]).rename(columns={
+        "model": "Model",
+        "attribute": "Audit attribute",
+        "eligible_groups": "Eligible groups",
+        "dpd": "DPD",
+        "eod": "EOD",
+        "lowest_selection_group": "Lowest alert group",
+        "highest_selection_group": "Highest alert group",
+        "lowest_recall_group": "Lowest recall group",
+        "highest_recall_group": "Highest recall group",
+    })
+    attribute_labels = {
+        "gender": "Gender",
+        "disability": "Disability",
+        "imd_band": "IMD band",
+        "gender_x_disability": "Gender × disability",
+        "disability_x_deprivation": "Disability × deprivation",
+    }
+    fairness["Audit attribute"] = fairness["Audit attribute"].map(attribute_labels)
+    fairness = fairness[[
+        "Model", "Audit attribute", "Eligible groups", "DPD", "Lowest alert group",
+        "Highest alert group", "EOD", "Lowest recall group", "Highest recall group",
+    ]]
+    st.dataframe(
+        fairness.style.format({"DPD": "{:.3f}", "EOD": "{:.3f}"}),
+        width="stretch", hide_index=True,
+    )
+    st.caption(
+        "DPD is Demographic Parity Difference: highest minus lowest eligible-group selection rate. "
+        "EOD is Equal Opportunity Difference: highest minus lowest eligible-group withdrawal recall. "
+        "These descriptive test-set checks do not establish fairness or discrimination."
+    )
+    with st.expander("Group-level fairness audit"):
+        detail = bundle["subgroup_metrics"].copy()
+        selector_columns = st.columns(2)
+        selected_fairness_model = selector_columns[0].selectbox(
+            "Model",
+            options=list(MODEL_LABELS),
+            format_func=lambda model_id: MODEL_LABELS[model_id],
+            key="fairness_detail_model",
+        )
+        selected_fairness_attribute = selector_columns[1].selectbox(
+            "Audit attribute",
+            options=PRIMARY_FAIRNESS_ATTRIBUTES,
+            format_func=lambda attribute: attribute_labels[attribute],
+            key="fairness_detail_attribute",
+        )
+        detail = detail[
+            (detail["model_id"] == selected_fairness_model)
+            & (detail["attribute"] == selected_fairness_attribute)
+        ][[
+            "group", "records", "actual_withdrawn", "actual_not_withdrawn",
+            "withdrawal_rate", "selection_rate", "tpr_recall", "fnr", "fpr",
+            "precision", "accuracy", "eligible",
+        ]].rename(columns={
+            "group": "Group", "records": "Records",
+            "actual_withdrawn": "Withdrawals",
+            "actual_not_withdrawn": "Non-withdrawals",
+            "withdrawal_rate": "Withdrawal rate", "selection_rate": "Alert rate",
+            "tpr_recall": "Recall / TPR", "fnr": "FNR", "fpr": "FPR",
+            "precision": "Precision", "accuracy": "Accuracy", "eligible": "Eligible",
+        })
+        st.dataframe(
+            detail.style.format({
+                "Withdrawal rate": "{:.1%}", "Alert rate": "{:.1%}",
+                "Recall / TPR": "{:.1%}", "FNR": "{:.1%}", "FPR": "{:.1%}",
+                "Precision": "{:.1%}", "Accuracy": "{:.1%}",
+            }),
+            width="stretch", hide_index=True,
+        )
+        st.caption(
+            "Ineligible groups remain visible for context but do not contribute to DPD or EOD. "
+            "Unknown IMD categories are always excluded from those gap calculations."
+        )
     curve_columns = st.columns(2)
     curve_columns[0].plotly_chart(curve_figure(bundle["curves"], "pr"), width="stretch")
     curve_columns[1].plotly_chart(curve_figure(bundle["curves"], "roc"), width="stretch")
@@ -339,18 +427,6 @@ with tab_performance:
         "**Why calibration matters**\n\nPR-AUC and ROC-AUC measure ranking. The calibration curve asks whether a displayed 70% risk "
         "corresponds to withdrawal about 70% of the time. Lower Brier score is better."
     )
-    with st.expander("Subgroup audit: gender and disability"):
-        subgroup = bundle["subgroup_metrics"].copy()
-        subgroup["group_label"] = subgroup["attribute"].str.title() + ": " + subgroup["group"]
-        subgroup_figure = px.bar(
-            subgroup, x="group_label", y="recall", color="model_id", barmode="group",
-            hover_data=["records", "fpr", "precision"],
-            color_discrete_map=MODEL_COLORS, labels={"recall": "Withdrawal recall", "group_label": "", "model_id": "Model"},
-        )
-        subgroup_figure.for_each_trace(lambda trace: trace.update(name=MODEL_LABELS.get(trace.name, trace.name)))
-        subgroup_figure.update_layout(height=420, yaxis_tickformat=".0%", legend_title=None)
-        st.plotly_chart(subgroup_figure, width="stretch")
-        st.caption("These are descriptive test-set checks. Smaller groups have greater uncertainty and should not be treated as proof of fairness or discrimination.")
     with st.expander("Data partition audit"):
         st.dataframe(bundle["partition_audit"], hide_index=True, width="stretch")
         st.caption("Student overlap across training, evaluation, and test partitions is zero.")

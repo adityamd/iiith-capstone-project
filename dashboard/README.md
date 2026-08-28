@@ -158,6 +158,14 @@ does not alter the published test metrics.
 Changing the slider can change the displayed class for a selected case, but it does not rewrite
 the metric table, confusion counts, curves, or saved test predictions.
 
+## Fairness interpretation
+
+The fairness summary follows `Fairness_Evaluation_DPD_EOD_v1.ipynb`: DPD is the difference
+between the highest and lowest eligible-group alert rates, while EOD is the equal-opportunity
+difference between the highest and lowest eligible-group withdrawal recall. A group is eligible
+when it contains at least 30 withdrawals and 30 non-withdrawals; unknown IMD categories remain
+visible in the detailed audit but do not define the reported gaps.
+
 ## Troubleshooting
 
 ### `torch` or `c10.dll` fails to load
